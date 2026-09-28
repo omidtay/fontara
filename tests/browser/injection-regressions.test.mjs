@@ -397,6 +397,43 @@ test("Chrome ChatGPT keeps English blocks and runs LTR inside mixed RTL replies"
   })
 })
 
+test("Chrome ChatGPT RTL finds messages in the current logged-in markup", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    await page.evaluate(() => {
+      document.body.innerHTML = `
+        <div data-turn-key="user-turn">
+          <div data-user-message-bubble="true">
+            <div id="user">NEGOTIATOR رو با ZaminAI مقایسه کن</div>
+          </div>
+        </div>
+        <div data-turn-key="assistant-turn">
+          <div data-chatgpt-selection-message-id="message">
+            <div data-markdown-text-style="assistant-message" dir="auto" class="MarkdownRoot-rZKhxa">
+              <p id="english-start" dir="auto" class="Paragraph-kKnbIo"><strong>relationship</strong>های شبکه آدم‌ها و certification برند</p>
+              <p id="english" dir="auto" class="Paragraph-kKnbIo">Product fit: NEGOTIATOR</p>
+            </div>
+          </div>
+        </div>
+      `
+      window.adapter = FontaraRegressionRuntime.createRtlSiteAdapter("chatgpt")
+      window.adapter.enable()
+    })
+    await page.waitForFunction(
+      () =>
+        document.querySelector("#english-start").dir === "rtl" &&
+        document.querySelector("#user").dir === "rtl"
+    )
+    assert.equal(
+      await page.$eval(
+        "#english",
+        (element) => getComputedStyle(element).direction
+      ),
+      "ltr"
+    )
+    await page.evaluate(() => window.adapter.dispose())
+  })
+})
+
 test("Chrome RTL observers follow a replaced body", async (context) => {
   await withRuntimePage(context, async (page) => {
     await page.evaluate(() => {
