@@ -284,6 +284,16 @@ function createChatGptAdapter(): RtlSiteAdapter {
     "strong",
     "em"
   ])
+  const ltrBlockSelector = joinSelectors([
+    "p",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "blockquote"
+  ])
 
   return createStandardAdapter({
     siteId: "chatgpt",
@@ -302,16 +312,49 @@ function createChatGptAdapter(): RtlSiteAdapter {
       const messageText = getTextWithoutSelector(element, mathGuard)
       if (!engine.needsRTL(messageText) || !engine.textSelector) return true
 
+      const rtlTargets = new Set<Element>()
       element.querySelectorAll(textSelector).forEach((child) => {
         if (engine.isExcluded(child)) return
         const childText = getTextWithoutSelector(child, mathGuard)
         if (engine.needsRTL(childText)) {
           engine.applyRTL(child)
+          rtlTargets.add(child)
+        } else if (
+          child.matches(ltrBlockSelector) &&
+          normalizeText(childText) &&
+          hasRtlAncestor(child, element, rtlTargets)
+        ) {
+          // Mixed replies flip the shared markdown wrapper to RTL; keep
+          // English paragraphs inside it from inheriting that direction.
+          applyLTR(child, engine)
         }
       })
       return true
     }
   })
+}
+
+// Only ancestors styled in the current pass count: stale RTL targets from a
+// previous pass are still in the DOM until the engine reconciles them.
+function hasRtlAncestor(
+  element: Element,
+  message: Element,
+  rtlTargets: Set<Element>
+): boolean {
+  let ancestor = element.parentElement
+  while (ancestor && ancestor !== message) {
+    if (rtlTargets.has(ancestor)) return true
+    if (ancestor.hasAttribute("dir")) return false
+    ancestor = ancestor.parentElement
+  }
+  return false
+}
+
+function applyLTR(element: Element, engine: RtlEngine): void {
+  engine.rememberStyle(element)
+  element.setAttribute("dir", "ltr")
+  engine.setStyle(element, "direction", "ltr")
+  engine.setStyle(element, "text-align", "left")
 }
 
 function createClaudeAdapter(): RtlSiteAdapter {
