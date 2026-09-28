@@ -26,6 +26,9 @@
     "Apple Color Emoji", Arial, "sans-serif", "Segoe UI Emoji",
     "Segoe UI Symbol";
   --fontara-chatgpt-header-wordmark-fallback: "OpenAI Sans", sans-serif;
+  --fontara-chatgpt-markdown-paragraph-fallback: -apple-system-body,
+    ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
+    "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 body {
@@ -51,4 +54,9 @@ kbd {
 .header-wordmark {
   font-family: var(--fontara-font),
     var(--fontara-chatgpt-header-wordmark-fallback) !important;
+}
+
+[class*="Paragraph-"] {
+  font-family: var(--fontara-font),
+    var(--fontara-chatgpt-markdown-paragraph-fallback) !important;
 }
