@@ -120,19 +120,16 @@ function createCodeListTableCSS(
         : ""
     }
 
-    [dir="rtl"] ul,
-    [dir="rtl"] ol {
+    [dir="rtl"] :is(ul, ol):dir(rtl) {
       padding-right: ${listPadding};
       padding-left: 0;
     }
 
-    [dir="rtl"] table {
+    [dir="rtl"] table:dir(rtl) {
       direction: rtl;
     }
 
-    [dir="rtl"] li,
-    [dir="rtl"] button,
-    [dir="rtl"] a {
+    [dir="rtl"] :is(li, button, a):dir(rtl) {
       text-align: right;
     }
   `
@@ -284,16 +281,8 @@ function createChatGptAdapter(): RtlSiteAdapter {
     "strong",
     "em"
   ])
-  const ltrBlockSelector = joinSelectors([
-    "p",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "blockquote"
-  ])
+  // List items and rows take their direction from the list or table.
+  const ltrSkipSelector = joinSelectors(["li", "tr"])
 
   return createStandardAdapter({
     siteId: "chatgpt",
@@ -320,18 +309,26 @@ function createChatGptAdapter(): RtlSiteAdapter {
           engine.applyRTL(child)
           rtlTargets.add(child)
         } else if (
-          child.matches(ltrBlockSelector) &&
-          normalizeText(childText) &&
+          !child.matches(ltrSkipSelector) &&
+          hasLtrLetter(childText) &&
           hasRtlAncestor(child, element, rtlTargets)
         ) {
           // Mixed replies flip the shared markdown wrapper to RTL; keep
-          // English paragraphs inside it from inheriting that direction.
+          // English blocks from inheriting it and isolate English runs so
+          // numbers next to Persian text stay attached to their words.
           applyLTR(child, engine)
         }
       })
       return true
     }
   })
+}
+
+function hasLtrLetter(text: string): boolean {
+  for (const char of text) {
+    if (isLtrCharacter(char)) return true
+  }
+  return false
 }
 
 // Only ancestors styled in the current pass count: stale RTL targets from a

@@ -334,7 +334,7 @@ test("Chrome RTL reconciliation updates nested message scopes and mixed-language
   })
 })
 
-test("Chrome ChatGPT keeps English paragraphs LTR inside mixed RTL replies", async (context) => {
+test("Chrome ChatGPT keeps English blocks and runs LTR inside mixed RTL replies", async (context) => {
   await withRuntimePage(context, async (page) => {
     await page.evaluate(() => {
       document.body.innerHTML = `
@@ -342,6 +342,9 @@ test("Chrome ChatGPT keeps English paragraphs LTR inside mixed RTL replies", asy
           <div id="markdown" class="markdown prose">
             <p id="english">Here is the Persian tagline you asked for:</p>
             <p id="persian">مدیریت پروژه، ساده‌تر از همیشه.</p>
+            <p id="inline">همان <strong id="strong">40 same-type homes</strong> است.</p>
+            <ol id="list"><li id="item">Timeline</li></ol>
+            <table id="table"><tr><td>Timeline</td><td>15 days</td></tr></table>
           </div>
         </div>
       `
@@ -352,17 +355,43 @@ test("Chrome ChatGPT keeps English paragraphs LTR inside mixed RTL replies", asy
       () => document.querySelector("#persian").dir === "rtl"
     )
     assert.deepEqual(
-      await page.evaluate(() => ({
-        markdown: document.querySelector("#markdown").dir,
-        english: getComputedStyle(document.querySelector("#english")).direction
-      })),
-      { markdown: "rtl", english: "ltr" }
+      await page.evaluate(() => {
+        const direction = (id) =>
+          getComputedStyle(document.getElementById(id)).direction
+        const item = getComputedStyle(document.querySelector("#item"))
+        const list = getComputedStyle(document.querySelector("#list"))
+        return {
+          markdown: document.querySelector("#markdown").dir,
+          english: direction("english"),
+          inline: direction("inline"),
+          strong: document.querySelector("#strong").dir,
+          item: direction("item"),
+          itemAlign: item.textAlign,
+          listPaddingRight: list.paddingRight,
+          table: direction("table")
+        }
+      }),
+      {
+        markdown: "rtl",
+        english: "ltr",
+        inline: "rtl",
+        strong: "ltr",
+        item: "ltr",
+        itemAlign: "left",
+        listPaddingRight: "0px",
+        table: "ltr"
+      }
     )
-    await page.$eval("#persian", (element) => element.remove())
+    await page.evaluate(() => {
+      for (const id of ["persian", "inline"]) {
+        document.getElementById(id).remove()
+      }
+    })
     await page.waitForFunction(
       () =>
         !document.querySelector("#markdown").hasAttribute("dir") &&
-        !document.querySelector("#english").hasAttribute("dir")
+        !document.querySelector("#english").hasAttribute("dir") &&
+        !document.querySelector("#table").hasAttribute("dir")
     )
     await page.evaluate(() => window.adapter.dispose())
   })
