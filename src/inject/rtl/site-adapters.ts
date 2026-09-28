@@ -264,7 +264,10 @@ function createChatGptAdapter(): RtlSiteAdapter {
     "[data-message-author-role]",
     '[data-testid="assistant-turn"]',
     '[data-testid="user-turn"]',
-    '[data-testid="message-text"]'
+    '[data-testid="message-text"]',
+    // Current logged-in UI: no author-role attributes on message wrappers.
+    "[data-markdown-text-style]",
+    "[data-user-message-bubble]"
   ]
   const codeGuardSelectors = [
     ...COMMON_CODE_GUARD_SELECTORS,
