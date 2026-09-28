@@ -317,11 +317,52 @@ test("Chrome RTL reconciliation updates nested message scopes and mixed-language
       element.firstChild.data = "Hello world"
     })
     await page.waitForFunction(
-      () => !document.querySelector("#edited").hasAttribute("dir")
+      () => document.querySelector("#edited").dir !== "rtl"
+    )
+    assert.equal(
+      await page.$eval(
+        "#edited",
+        (element) => getComputedStyle(element).direction
+      ),
+      "ltr"
     )
     assert.equal(
       await page.$eval("#unchanged", (element) => element.dir),
       "rtl"
+    )
+    await page.evaluate(() => window.adapter.dispose())
+  })
+})
+
+test("Chrome ChatGPT keeps English paragraphs LTR inside mixed RTL replies", async (context) => {
+  await withRuntimePage(context, async (page) => {
+    await page.evaluate(() => {
+      document.body.innerHTML = `
+        <div data-message-author-role="assistant">
+          <div id="markdown" class="markdown prose">
+            <p id="english">Here is the Persian tagline you asked for:</p>
+            <p id="persian">مدیریت پروژه، ساده‌تر از همیشه.</p>
+          </div>
+        </div>
+      `
+      window.adapter = FontaraRegressionRuntime.createRtlSiteAdapter("chatgpt")
+      window.adapter.enable()
+    })
+    await page.waitForFunction(
+      () => document.querySelector("#persian").dir === "rtl"
+    )
+    assert.deepEqual(
+      await page.evaluate(() => ({
+        markdown: document.querySelector("#markdown").dir,
+        english: getComputedStyle(document.querySelector("#english")).direction
+      })),
+      { markdown: "rtl", english: "ltr" }
+    )
+    await page.$eval("#persian", (element) => element.remove())
+    await page.waitForFunction(
+      () =>
+        !document.querySelector("#markdown").hasAttribute("dir") &&
+        !document.querySelector("#english").hasAttribute("dir")
     )
     await page.evaluate(() => window.adapter.dispose())
   })
